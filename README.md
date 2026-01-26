@@ -1,303 +1,126 @@
-# NeuroVLA: A Lego-like Codebase for Vision-Language-Action Models
-
 <div align="center">
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch 2.8+](https://img.shields.io/badge/pytorch-2.8+-red.svg)](https://pytorch.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# NeuroVLA: A Brain-like Embodied Intelligence for Fluid and Fast Reflexive Robotics Control
 
-**A modular and extensible framework for developing Vision-Language-Action models for robotic manipulation**
+**Weiyu Guo**<sup>1,4</sup>, **He Zhang**<sup>1,4</sup>, **Pengteng Li**<sup>1,4</sup>, **Tiefu Cai**<sup>1,4</sup>, **Ziyang Chen**<sup>1,4</sup>, **Yandong Guo**<sup>1,4</sup>, <br>
+**He Xiao**<sup>4</sup>, **Yongkui Yang**<sup>3</sup>\*, **Ying Sun**<sup>1,2</sup>\*, **Hui Xiong**<sup>1,2</sup>\*
 
-[Installation](#installation) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Examples](#examples) • [Citation](#citation)
+<sup>1</sup>The Thrust of Artificial Intelligence, HKUST (Guangzhou), China  
+<sup>2</sup>The Department of CSE, HKUST, Hong Kong, China  
+<sup>3</sup>Shenzhen Institutes of Advanced Technology, CAS, China  
+<sup>4</sup>AI<sup>2</sup>Robotics, Shenzhen, China  
+
+
+[![Nature](https://img.shields.io/badge/Nature-Under%20Review-E30613?style=flat-square)](https://github.com/guoweiyu/NeuroVLA)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-AGPL%20v3-00599C?style=flat-square&logo=gnu-bash&logoColor=white)](https://www.gnu.org/licenses/agpl-3.0)
 
 </div>
 
----
 
-## Overview
+<br>
+<div align="center">
+  <table style="border: none; border-collapse: collapse; width: 100%;">
+    <tr>
+      <td align="center" style="border: none; padding: 5px; width: 33%;">
+        <img src="assets/pourwater.gif" width="100%" alt="Fine-grained Manipulation">
+        <br>
+        <sub><b>(a) Fine-grained Manipulation</b><br>Precision pouring task demanding high-frequency feedback for robotic stable control.</sub>
+      </td>
+      <td align="center" style="border: none; padding: 5px; width: 33%;">
+        <img src="assets/shake.gif" width="100%" alt="Temporal Memory">
+        <br>
+        <sub><b>(b) Temporal Memory</b><br>Multi-stage shaking task demonstrating phase tracking and working memory capabilities.</sub>
+      </td>
+      <td align="center" style="border: none; padding: 5px; width: 33%;">
+        <img src="assets/collision.gif" width="100%" alt="Reflexive Safety">
+        <br>
+        <sub><b>(c) Reflexive Safety</b><br>Rapid withdrawal and recovery upon unexpected collision to ensure hardware safety.</sub>
+      </td>
+    </tr>
+  </table>
+  <p><em>Real-world experiments evaluating precision (Pouring), memory (Shaking), and safety reflexes (Collision Recovery).</em></p>
+</div>
+<br>
 
-NeuroVLA is a flexible, modular codebase for building and training Vision-Language-Action (VLA) models for robotic manipulation. It features:
 
-- 🧩 **Modular Design**: Lego-like architecture for easy component swapping and experimentation
-- 🧠 **Spiking Neural Networks**: Novel SNN-based action prediction with temporal processing
-- 🎯 **State-Aware Conditioning**: FiLM and GRU-based state modulation for precise control
-- 🚀 **Multiple Backends**: Support for various VLM backbones (Qwen-VL, InternVL, etc.)
-- 📊 **Comprehensive Evaluation**: Built-in support for LIBERO, SimplerEnv, and real robot deployment
-- ⚡ **Efficient Training**: DeepSpeed integration with ZeRO optimization
+## 📖 Overview
 
-## Architecture
+The pursuit of general-purpose embodied intelligence faces a critical **sensorimotor paradox**: traditional Vision-Language-Action (VLA) models suffer from "temporal blindness" and high latency, leading to action jitter and an inability to reflex instantaneously in dynamic scenarios.
 
-NeuroVLA combines vision-language models with action prediction through a modular pipeline:
+**NeuroVLA** introduces a bio-inspired, tri-level hierarchical architecture that restores the canonical division of labor found in biological motor systems. Instead of a monolithic processor, NeuroVLA decouples high-level cognition from low-level motor control:
 
-```
-Images + Instructions → VLM Encoder → Q-Former → State Modulator → Action Predictor → Robot Actions
-                                                        ↑
-                                                   Robot States
-```
+1.  **Cortical Module (Vision-Language):** Responsible for semantic planning and high-level goal generation.
+2.  **Cerebellar Module (Adaptive):** Functions as a high-frequency adaptive filter to predict sensory consequences and refine timing.
+3.  **Spinal Module (Spiking Neural Network):** Implements asynchronous, localized actuation and fast sensorimotor loops.
 
-### Key Components
+By mapping the spinal module to event-driven spiking networks, NeuroVLA exploits temporal sparsity to minimize end-to-end latency, enabling localized, hardware-efficient learning on edge devices.
 
-- **VLM Interface**: Qwen-VL, Qwen2.5-VL for vision-language understanding
-- **Q-Former**: Extracts action-relevant features from VLM hidden states
-- **State Modulator**: FiLM or GRU-gated modulation conditioned on robot states
-- **Action Predictor**: SNN-based temporal action prediction with LIF neurons
+## 🔥 Key Results
 
-## Installation
+Our experiments on both simulated benchmarks and physical robotic hardware demonstrate distinctive capabilities that purely scaling monolithic VLAs cannot replicate:
+
+* **Kinematic Smoothness (75% Jerk Reduction):** The cerebellar module functions as an adaptive filter, effectively suppressing high-frequency intention tremor. This reduces kinematic jerk by over **75%**, ensuring fluid execution even with noisy visual feedback.
+* **Survival Reflexes (< 20 ms Latency):** Under unexpected physical collisions, the cerebellar-spinal loops trigger rapid withdrawal reflexes in **< 20 ms**, bypassing the prohibitive latency (> 200 ms) of the cortical loop to protect hardware.
+* **Emergent Sparsity:** The neuromorphic spinal layer exhibits unsupervised functional self-organization without explicit training signals:
+    * *Temporal Sparsity:* Neurons spontaneously revert to quiescence during static posturing to minimize metabolic cost.
+    * *Spatial Disentanglement:* The network naturally segregates high-dimensional control signals into distinct, somatotopic behavioral modes.
+
+## 🛠️ Installation
+
+The environment setup is based on standard VLA dependencies. We recommend using `conda` to manage the environment.
 
 ### Prerequisites
+* Linux (Ubuntu 20.04/22.04 recommended)
+* Python 3.10+
+* NVIDIA GPU with CUDA support
 
-- Python >= 3.10
-- CUDA >= 11.8 (for GPU support)
-- PyTorch >= 2.8
-
-### Install from Source
+### Environment Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/NeuroVLA.git
-cd NeuroVLA
+# 1. Create a conda environment
+conda create -n neurovla python=3.10 -y
+conda activate neurovla
 
-# Install dependencies
+# 2. Install PyTorch (Adjust CUDA version as needed)
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+
+# Install requirements
 pip install -r requirements.txt
 
-# Install NeuroVLA in editable mode
-pip install -e .
+# Install FlashAttention2
+pip install flash-attn --no-build-isolation
 ```
 
-### Key Dependencies
+Note: For specific dependency versions and detailed configuration related to the base VLA framework, please refer to the [StarVLA](https://github.com/starVLA/starVLA) Environment Setup Guide. Our implementation builds upon these foundational libraries.
 
-```
-torch>=2.8.0
-transformers>=4.57.0
-deepspeed>=0.16.9
-snntorch>=0.9.1
-qwen-vl-utils
-```
-
-## Quick Start
-
-### Training
-
-Train NeuroVLA on LIBERO benchmark:
+## 🚀 Usage
 
 ```bash
-# Single GPU training
-python NeuroVLA/training/train_NeuroVLA.py \
-    --config NeuroVLA/config/training/internvla_cotrain_libero.yaml
+# 1. Run training example
+bash NeuroVLA/scripts/run_scripts/run_libero_train_NeuroVLA.sh
 
-# Multi-GPU training with DeepSpeed
-bash scripts/run_scripts/run_libero_train_yibu.sh
+# 2. Run evaluation example
+bash NeuroVLA/examples/LIBERO/eval_libero.sh
 ```
 
-### Inference
-
-Load a pretrained model and predict actions:
-
-```python
-import torch
-from NeuroVLA.model.framework.NeuroVLA_yibu import NeuroVLA
-
-# Load model
-device = torch.device("cuda:0")
-model = NeuroVLA.from_pretrained("path/to/checkpoint.pt").to(device)
-
-# Prepare inputs
-images = [...]  # List of PIL Images
-instructions = ["pick up the red block"]
-states = [...]  # Robot state history [B, T, 8]
-
-# Predict actions
-with torch.inference_mode():
-    result = model.predict_action(
-        batch_images=images,
-        instructions=instructions,
-        states=states,
-    )
-    actions = result["normalized_actions"]
-```
-
-## Project Structure
-
-```
-NeuroVLA/
-├── NeuroVLA/
-│   ├── config/              # Configuration files
-│   │   ├── training/        # Training configs (LIBERO, OXE, etc.)
-│   │   └── deepseeds/       # DeepSpeed configs
-│   ├── dataloader/          # Data loading modules
-│   │   ├── lerobot_datasets.py
-│   │   └── gr00t_lerobot/   # GR00T/LeRobot integration
-│   ├── model/
-│   │   ├── framework/       # Main model frameworks
-│   │   │   ├── NeuroVLA_yibu.py      # Main NeuroVLA model
-│   │   │   └── base_framework.py     # Base framework class
-│   │   └── modules/
-│   │       ├── vlm/         # Vision-language models
-│   │       ├── action_model/  # Action prediction heads
-│   │       │   └── spike_action_model_multitimestep.py
-│   │       ├── projector/   # Q-Former and projectors
-│   │       └── dino_model/  # DINO vision encoder
-│   └── training/            # Training scripts
-├── deployment/              # Model server and deployment
-│   └── model_server/        # WebSocket policy server
-├── examples/
-│   ├── LIBERO/             # LIBERO evaluation
-│   ├── SimplerEnv/         # SimplerEnv evaluation
-│   └── real_robot/         # Real robot deployment
-└── scripts/                # Training and evaluation scripts
-```
-
-## Examples
-
-### LIBERO Evaluation
-
-Evaluate on LIBERO benchmark tasks:
-
-```bash
-cd examples/LIBERO
-
-# Start model server
-bash run_server.sh
-
-# Run evaluation
-bash eval_libero.sh
-```
-
-See [examples/LIBERO/README.md](examples/LIBERO/README.md) for detailed instructions.
-
-### SimplerEnv Evaluation
-
-Evaluate on SimplerEnv simulation:
-
-```bash
-cd examples/SimplerEnv
-python start_simpler_env.py --checkpoint path/to/checkpoint.pt
-```
-
-See [examples/SimplerEnv/README.md](examples/SimplerEnv/README.md) for more details.
-
-### Real Robot Deployment
-
-Deploy on physical robots:
-
-```bash
-cd examples/real_robot
-# Follow setup instructions in README.md
-```
-
-See [examples/real_robot/README.md](examples/real_robot/README.md) for hardware setup and deployment guide.
-
-## Model Zoo
-
-| Model | Dataset | Success Rate | Checkpoint |
-|-------|---------|--------------|------------|
-| NeuroVLA-Base | LIBERO-90 | TBD | Coming soon |
-| NeuroVLA-Large | OXE | TBD | Coming soon |
-
-## Configuration
-
-NeuroVLA uses YAML configuration files for training. Key configuration options:
-
-```yaml
-framework:
-  name: "NeuroVLA_yibu"
-  layer_qformer:
-    qformer_start_layer: -6
-    qformer_end_layer: -1
-    num_query_tokens: 8
-
-training:
-  batch_size: 32
-  learning_rate: 1e-4
-  num_epochs: 100
-
-deepspeed:
-  config: "config/deepseeds/deepspeed_zero2.yaml"
-```
-
-See [NeuroVLA/config/training/](NeuroVLA/config/training/) for example configurations.
-
-## Development
-
-### Code Style
-
-We use `black` and `ruff` for code formatting:
-
-```bash
-# Format code
-make autoformat
-
-# Check code style
-make check
-
-# Clean cache files
-make clean
-```
-
-### Design Philosophy
-
-NeuroVLA follows a "Lego-like" design philosophy with:
-
-- **Modularity**: Easy to swap components (VLM, action head, etc.)
-- **Extensibility**: Simple to add new models and datasets
-- **Clarity**: Clear separation of concerns and well-documented code
-
-See [assets/intro_v1.md](assets/intro_v1.md) for detailed design principles.
-
-## Documentation
-
-- [Design Philosophy](assets/intro_v1.md) - Detailed architecture and conventions
-- [LIBERO Evaluation](examples/LIBERO/README.md) - LIBERO benchmark guide
-- [SimplerEnv Evaluation](examples/SimplerEnv/README.md) - SimplerEnv setup
-- [Real Robot Deployment](examples/real_robot/README.md) - Hardware deployment
-- [Model Server](deployment/model_server/README.md) - WebSocket server usage
-
-## Contributing
-
-We welcome contributions! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-Please ensure your code follows our style guidelines and includes appropriate tests.
-
-## Citation
-
-If you find NeuroVLA useful in your research, please cite:
+## 📝 Citation
+If you find our code or architecture helpful in your research, please cite our repository:
 
 ```bibtex
-@software{neurovla2024,
-  title={NeuroVLA: A Lego-like Codebase for Vision-Language-Action Models},
-  author={Ye, Jinhui and Wang, Fangjing and Yu, Junqiu},
-  year={2024},
-  url={https://github.com/yourusername/NeuroVLA}
+@misc{guo2025neurovla,
+  author = {Guo, Weiyu and Zhang, He and Li, Pengteng and Cai, Tiefu and Chen, Ziyang and Guo, Yandong and Xiao, He and Yang, Yongkui and Sun, Ying and Xiong, Hui},
+  title = {NeuroVLA: A Brain-like Embodied Intelligence for Fluid and Fast Reflexive Robotics Control},
+  year = {2025},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {https://github.com/guoweiyu/NeuroVLA}}
 }
 ```
 
-## License
+## 🛡️ License
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This is a strict copyleft license. If you use this software (or a modified version of it) to provide a service over a network, you must make the source code available to the users of that service.
 
-## Acknowledgments
-
-- Built upon [StarVLA](https://github.com/yourusername/StarVLA) codebase
-- Inspired by [OpenVLA](https://github.com/openvla/openvla) and [GR00T](https://github.com/NVlabs/GR00T)
-- Uses [Qwen-VL](https://github.com/QwenLM/Qwen-VL) for vision-language understanding
-- Evaluation on [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO) and [SimplerEnv](https://github.com/simpler-env/SimplerEnv)
-
-## Contact
-
-- **Jinhui Ye** - jinhuiyes@gmail.com
-- **Fangjing Wang** - fangjing_wang@outlook.com
-- **Junqiu Yu** - michaelyu1101@163.com
-
-For questions and discussions, please open an issue on GitHub.
-
----
-
-<div align="center">
-Made with ❤️ by the NeuroVLA Team
-</div>
+See LICENSE for more details.
