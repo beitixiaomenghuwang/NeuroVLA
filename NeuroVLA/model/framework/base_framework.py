@@ -6,24 +6,33 @@ Base framework abstraction providing:
 Note: No device placement or optimizer concerns handled here (delegated to trainer).
 """
 
-from pathlib import Path
-from typing import Dict, List
+import torch.nn as nn
+from typing import List
 
-import numpy as np
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from transformers import AutoConfig, AutoModel, PretrainedConfig, PreTrainedModel
+import numpy as np
 
-from NeuroVLA.model.framework.__init__ import build_framework
-from NeuroVLA.model.framework.share_tools import dict_to_namespace, read_mode_config
+from typing import List
+
+from pathlib import Path
+from typing import Dict, List
+from transformers import AutoConfig, AutoModel, PretrainedConfig, PreTrainedModel
+import numpy as np
 from NeuroVLA.model.tools import auto_get_trainable_modules
+
+from NeuroVLA.model.framework.share_tools import read_mode_config
 from NeuroVLA.training.trainer_utils import initialize_overwatch
+from NeuroVLA.model.framework.share_tools import dict_to_namespace
+from NeuroVLA.model.framework.__init__ import build_framework
 
 logger = initialize_overwatch(__name__)
 
 
 # PreTrainedModel, AutoModel, PretrainedConfig,  are so good, find sometime to study them
-
+# TODO @JinhuiYE find sometime to merge yaml config with transformer config
 
 class baseframework(PreTrainedModel):
     """
@@ -34,11 +43,14 @@ class baseframework(PreTrainedModel):
       - Use provided helpers for action normalization handling
     """
 
-    def __init__(self, hf_config=PretrainedConfig()) -> None:
+    def __init__(
+        self,
+        hf_config = PretrainedConfig()
+    ) -> None:
         """
         Initialize base nn.Module. Subclasses add components.
         """
-
+        
         super().__init__(hf_config)
 
     @classmethod
@@ -216,9 +228,9 @@ class baseframework(PreTrainedModel):
     def get_action_stats(self, unnorm_key=None, norm_stats=None):
         """
         Duplicate stats accessor (retained for backward compatibility).
-        # in future, it will own to policy interface and pack as
+        # in future, it will own to policy interface and pack as 
         """
-        if norm_stats == None:
+        if norm_stats ==None:
             norm_stats = self.norm_stats
         unnorm_key = self._check_unnorm_key(norm_stats, unnorm_key)
         return norm_stats[unnorm_key]["action"]

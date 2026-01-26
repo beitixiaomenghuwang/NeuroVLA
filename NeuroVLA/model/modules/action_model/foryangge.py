@@ -100,6 +100,7 @@ class L1RegressionActionHead(nn.Module):
     ):
         super().__init__()
         self.action_dim = action_dim
+        #todo gwy:768是写死的后面要从config里传
         self.model = MLPResNet(
             num_blocks=2, input_dim=input_dim, hidden_dim=hidden_dim, output_dim=action_dim
         )
@@ -111,6 +112,7 @@ class L1RegressionActionHead(nn.Module):
         # - shape: (batch_size, chunk_len, action_dim)
         batch_size = actions_hidden_states.shape[0]
         device = actions_hidden_states.device
+        #todo gwy:16是写死的后面要从config里传
         rearranged_actions_hidden_states = actions_hidden_states.reshape(batch_size, actions_hidden_states.shape[1], -1)
         
         action = self.model(rearranged_actions_hidden_states)

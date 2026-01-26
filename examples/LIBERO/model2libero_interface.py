@@ -1,15 +1,22 @@
-import os
 from collections import deque
-from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
-
+from typing import Optional, Sequence
+import os
 import cv2 as cv
 import matplotlib.pyplot as plt
 import numpy as np
 
 from deployment.model_server.tools.websocket_policy_client import WebsocketClientPolicy
+
 from examples.SimplerEnv.adaptive_ensemble import AdaptiveEnsembler
+from typing import Dict
+import numpy as np
+from pathlib import Path
+
+from typing import List
+from typing import Tuple, Dict
+
 from NeuroVLA.model.framework.share_tools import read_mode_config
+
 
 
 class M1Inference:
@@ -19,15 +26,16 @@ class M1Inference:
         unnorm_key: Optional[str] = None,
         policy_setup: str = "franka",
         horizon: int = 0,
-        action_ensemble=True,
-        action_ensemble_horizon: Optional[int] = 3,
+        action_ensemble = True, # @Jinhui
+        action_ensemble_horizon: Optional[int] = 3, # different cross sim
         image_size: List[int] = [224, 224],
         use_ddim: bool = True,
         num_ddim_steps: int = 10,
-        adaptive_ensemble_alpha=0.1,
+        adaptive_ensemble_alpha = 0.1,
         host="0.0.0.0",
         port=10095,
     ) -> None:
+        
         # build client to connect server policy
         self.client = WebsocketClientPolicy(host, port)
         self.policy_setup = policy_setup
@@ -37,7 +45,7 @@ class M1Inference:
         self.use_ddim = use_ddim
         self.num_ddim_steps = num_ddim_steps
         self.image_size = image_size
-        self.horizon = horizon  # 0
+        self.horizon = horizon #0
         self.action_ensemble = action_ensemble
         self.adaptive_ensemble_alpha = adaptive_ensemble_alpha
         self.action_ensemble_horizon = action_ensemble_horizon
@@ -55,6 +63,7 @@ class M1Inference:
         self.num_image_history = 0
 
         self.action_norm_stats = self.get_action_stats(self.unnorm_key, policy_ckpt_path=policy_ckpt_path)
+        
 
     def _add_image_to_history(self, image: np.ndarray) -> None:
         self.image_history.append(image)
@@ -72,9 +81,20 @@ class M1Inference:
         self.sticky_gripper_action = 0.0
         self.previous_gripper_action = None
 
-    def step(
-        self, images, task_description: Optional[str] = None, **kwargs
+
+    def step( # 这个写给不够好
+        self, 
+        images, 
+        task_description: Optional[str] = None,
+        **kwargs
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+        """
+        执行一步推理
+        :param image: 输入图像 (H, W, 3) uint8格式
+        :param task_description: 任务描述文本
+        :return: (原始动作, 处理后的动作)
+        """
+
         if task_description is not None:
             if task_description != self.task_description:
                 self.reset(task_description)
@@ -91,17 +111,19 @@ class M1Inference:
             "use_ddim": self.use_ddim,
             "num_ddim_steps": self.num_ddim_steps,
         }
+        
+        
 
         response = self.client.infer(vla_input)
-
+        
+        
         # unnormalize the action
-        normalized_actions = response["data"]["normalized_actions"]  # B, chunk, D
+        normalized_actions = response["data"]["normalized_actions"] # B, chunk, D        
         normalized_actions = normalized_actions[0]
-
-        raw_actions = self.unnormalize_actions(
-            normalized_actions=normalized_actions, action_norm_stats=self.action_norm_stats
-        )
-
+        
+        
+        raw_actions = self.unnormalize_actions(normalized_actions=normalized_actions, action_norm_stats=self.action_norm_stats)
+        
         if self.action_ensemble:
             raw_actions = self.action_ensembler.ensemble_action(raw_actions)[None]
 
@@ -118,13 +140,13 @@ class M1Inference:
         mask = action_norm_stats.get("mask", np.ones_like(action_norm_stats["q01"], dtype=bool))
         action_high, action_low = np.array(action_norm_stats["q99"]), np.array(action_norm_stats["q01"])
         normalized_actions = np.clip(normalized_actions, -1, 1)
-        normalized_actions[:, 6] = np.where(normalized_actions[:, 6] < 0.5, 0, 1)
+        normalized_actions[:, 6] = np.where(normalized_actions[:, 6] < 0.5, 0, 1) 
         actions = np.where(
             mask,
             0.5 * (normalized_actions + 1) * (action_high - action_low) + action_low,
             normalized_actions,
         )
-
+        
         return actions
 
     @staticmethod
@@ -137,6 +159,8 @@ class M1Inference:
 
         unnorm_key = M1Inference._check_unnorm_key(norm_stats, unnorm_key)
         return norm_stats[unnorm_key]["action"]
+
+
 
     def _resize_image(self, image: np.ndarray) -> np.ndarray:
         image = cv.resize(image, tuple(self.image_size), interpolation=cv.INTER_AREA)
@@ -173,7 +197,7 @@ class M1Inference:
         axs["image"].set_xlabel("Time in one episode (subsampled)")
         plt.legend()
         plt.savefig(save_path)
-
+    
     @staticmethod
     def _check_unnorm_key(norm_stats, unnorm_key):
         """

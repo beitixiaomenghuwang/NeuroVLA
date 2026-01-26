@@ -391,3 +391,9 @@ def get_action_model(config=None):
     return FlowmatchingActionHead(
         full_config=config
     )
+
+
+if __name__ == "__main__":
+    # TODO make each backbone.py can be debug independently
+
+    pass

@@ -1,3 +1,11 @@
+"""
+overwatch.py
+# Original file from OpenVLA project (Prismatic), licensed under MIT License.
+# See https://github.com/openvla/openvla for full license text and contributors.
+# Modified by @JinhuiYE, [2025]
+Utility class for creating a centralized/standardized logger (built on Rich) and accelerate handler.
+"""
+
 import logging
 import logging.config
 import os
@@ -31,14 +39,9 @@ logging.config.dictConfig(LOG_CONFIG)
 
 # === Custom Contextual Logging Logic ===
 class ContextAdapter(LoggerAdapter):
-    CTX_PREFIXES: ClassVar[Dict[int, str]] = {
-        **{0: "[*] "},
-        **{idx: "|=> ".rjust(4 + (idx * 4)) for idx in [1, 2, 3]},
-    }
+    CTX_PREFIXES: ClassVar[Dict[int, str]] = {**{0: "[*] "}, **{idx: "|=> ".rjust(4 + (idx * 4)) for idx in [1, 2, 3]}}
 
-    def process(
-        self, msg: str, kwargs: MutableMapping[str, Any]
-    ) -> Tuple[str, MutableMapping[str, Any]]:
+    def process(self, msg: str, kwargs: MutableMapping[str, Any]) -> Tuple[str, MutableMapping[str, Any]]:
         ctx_level = kwargs.pop("ctx_level", 0)
         return f"{self.CTX_PREFIXES[ctx_level]}{msg}", kwargs
 
@@ -50,10 +53,7 @@ class DistributedOverwatch:
 
         # Note that PartialState is always safe to initialize regardless of `accelerate launch` or `torchrun`
         #   =>> However, might be worth actually figuring out if we need the `accelerate` dependency at all!
-        self.logger, self.distributed_state = (
-            ContextAdapter(logging.getLogger(name), extra={}),
-            PartialState(),
-        )
+        self.logger, self.distributed_state = ContextAdapter(logging.getLogger(name), extra={}), PartialState()
 
         # Logger Delegation
         self.debug = self.logger.debug
@@ -63,9 +63,7 @@ class DistributedOverwatch:
         self.critical = self.logger.critical
 
         # Logging Defaults =>> only Log `INFO` on Main Process, `ERROR` on others!
-        self.logger.setLevel(
-            logging.INFO if self.distributed_state.is_main_process else logging.ERROR
-        )
+        self.logger.setLevel(logging.INFO if self.distributed_state.is_main_process else logging.ERROR)
 
     @property
     def rank_zero_only(self) -> Callable[..., Any]:
@@ -148,8 +146,4 @@ class PureOverwatch:
 
 
 def initialize_overwatch(name: str) -> Union[DistributedOverwatch, PureOverwatch]:
-    return (
-        DistributedOverwatch(name)
-        if int(os.environ.get("WORLD_SIZE", -1)) != -1
-        else PureOverwatch(name)
-    )
+    return DistributedOverwatch(name) if int(os.environ.get("WORLD_SIZE", -1)) != -1 else PureOverwatch(name)

@@ -41,7 +41,6 @@ class BaseDataConfig(ABC):
     def transform(self) -> ModalityTransform:
         pass
 
-
 class Alphabot2DataHeadLeftArmsConfig(BaseDataConfig):
     # video_keys = ["video.ego_view", "video.third_person_view_right", "video.third_person_view_left"]
     video_keys = ["video.ego_view", "video.third_person_view_left"]
@@ -99,7 +98,6 @@ class Alphabot2DataHeadLeftArmsConfig(BaseDataConfig):
             # model-specific transform
         ]
         return ComposedModalityTransform(transforms=transforms)
-
     def modality_config(self) -> dict[str, ModalityConfig]:
         video_modality = ModalityConfig(
             delta_indices=self.observation_indices,
@@ -126,7 +124,6 @@ class Alphabot2DataHeadLeftArmsConfig(BaseDataConfig):
 
 
 ###########################################################################################
-
 
 class OxeDroidDataConfig:
     video_keys = [
@@ -342,7 +339,6 @@ class OxeBridgeDataConfig:
 
 ###########################################################################################
 
-
 class OxeRT1DataConfig:
     video_keys = [
         "video.image",
@@ -527,16 +523,14 @@ class SingleFrankaRobotiqDeltaEefDataConfig:
 
         return ComposedModalityTransform(transforms=transforms)
 
-
 ###########################################################################################
-
 
 class Libero4in1DataConfig:
     video_keys = [
         "video.primary_image",
         "video.wrist_image",
     ]
-
+    
     state_keys = [
         "state.x",
         "state.y",
@@ -556,9 +550,9 @@ class Libero4in1DataConfig:
         "action.yaw",
         "action.gripper",
     ]
-
+    
     language_keys = ["annotation.human.action.task_description"]
-
+    #todo gwy 在这里修改 observation_indices 和 action_indices
     observation_indices = [0]
     action_indices = list(range(8))
     state_indices = list(range(-16, 0))
@@ -589,7 +583,7 @@ class Libero4in1DataConfig:
         return modality_configs
 
     def transform(self):
-        transforms = [
+        transforms = [ # TODO 我们不对内容做任何模型相关的 transform ， 但是这里要做 aug 相关的transform
             # video transforms
             # VideoToTensor(apply_to=self.video_keys),
             # VideoCrop(apply_to=self.video_keys, scale=0.95),
@@ -620,24 +614,24 @@ class Libero4in1DataConfig:
             # action transforms
             StateActionToTensor(apply_to=self.action_keys),
             StateActionTransform(
-                apply_to=self.action_keys,
-                normalization_modes={
-                    "action.x": "q99",
-                    "action.y": "q99",
-                    "action.z": "q99",
-                    "action.roll": "q99",
-                    "action.pitch": "q99",
-                    "action.yaw": "q99",
-                    # "action.gripper": "q99",
-                },
-            ),
+            apply_to=self.action_keys,
+            normalization_modes={
+                "action.x": "q99",
+                "action.y": "q99",
+                "action.z": "q99",
+                "action.roll": "q99",
+                "action.pitch": "q99",
+                "action.yaw": "q99",
+                # "action.gripper": "q99",
+            },
+        ),
             # concat transforms
             # ConcatTransform(
             #     # video_concat_order=self.video_keys,
             #     # state_concat_order=self.state_keys,
             #     action_concat_order=self.action_keys,
             # ),
-            # GR00TTransform( #
+            # GR00TTransform( #@TODO  为什么这个不做？
             #     state_horizon=len(self.observation_indices),
             #     action_horizon=len(self.action_indices),
             #     max_state_dim=64,
@@ -646,7 +640,6 @@ class Libero4in1DataConfig:
         ]
 
         return ComposedModalityTransform(transforms=transforms)
-
 
 ###########################################################################################
 
@@ -720,12 +713,13 @@ class SingleFrankaRobotiqDeltaJointsDataConfig:
 ###########################################################################################
 
 
+
 ROBOT_TYPE_CONFIG_MAP = {
-    "Alphabot": Alphabot2DataHeadLeftArmsConfig(),
+    "Alphabot":Alphabot2DataHeadLeftArmsConfig(),
     "libero_franka": Libero4in1DataConfig(),
     "oxe_droid": OxeDroidDataConfig(),
     "oxe_bridge": OxeBridgeDataConfig(),
     "oxe_rt1": OxeRT1DataConfig(),
     "demo_sim_franka_delta_joints": SingleFrankaRobotiqDeltaJointsDataConfig(),
-    "custom_robot_config": SingleFrankaRobotiqDeltaEefDataConfig(),
+    "custom_robot_config": SingleFrankaRobotiqDeltaEefDataConfig()
 }

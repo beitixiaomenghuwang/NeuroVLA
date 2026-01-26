@@ -1,3 +1,8 @@
+# Copyright 2025 NeuroVLA community. All rights reserved.
+# Licensed under the MIT License, Version 1.0 (the "License"); 
+# Implemented by [Jinhui YE / HKUST University] in [2025].
+
+
 """
 NeuroVLA’s trainer is built directly on native PyTorch + Accelerate + DeepSpeed, keeping the loop explicit and easy to hack.
 Conventions:

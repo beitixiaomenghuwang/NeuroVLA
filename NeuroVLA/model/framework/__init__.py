@@ -45,16 +45,12 @@ def build_framework(cfg):
     if cfg.framework.name == "InternVLA-M1":
         from NeuroVLA.model.framework.M1 import InternVLA_M1
         return InternVLA_M1(cfg)
-    elif cfg.framework.name == "QwenOFT":
-        from NeuroVLA.model.framework.QwenOFT import Qwenvl_OFT
-        return Qwenvl_OFT(cfg)
-    elif cfg.framework.name == "QwenFast":
-        from NeuroVLA.model.framework.QwenFast import Qwenvl_Fast
-        return Qwenvl_Fast(cfg)
-    elif cfg.framework.name == "QwenFM":
-        from NeuroVLA.model.framework.QwenFM import Qwenvl_FMHead
-        return Qwenvl_FMHead(cfg)
-    
+    elif cfg.framework.name == "NeuroVLA_noyibu":
+        from NeuroVLA.model.framework.spikeqwenpi_xiaonao import NeuroVLA
+        return NeuroVLA(cfg)
+    elif cfg.framework.name == "NeuroVLA":
+        from NeuroVLA.model.framework.NeuroVLA import NeuroVLA
+        return NeuroVLA(cfg)
     # auto detect from registry
     framework_id = cfg.framework.name
     if framework_id not in FRAMEWORK_REGISTRY._registry:
