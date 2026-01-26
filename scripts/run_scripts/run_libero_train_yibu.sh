@@ -1,9 +1,4 @@
 
-# export HF_HOME=/mnt/petrelfs/share/yejinhui/Models/huggingface_cache
-
-# export NCCL_SOCKET_IFNAME=bond0
-# export NCCL_IB_HCA=mlx5_2,mlx5_3
-
 # # 用于check save 的时候的通信
 # export NCCL_BLOCKING_WAIT=1
 # export NCCL_ASYNC_ERROR_HANDLING=1
