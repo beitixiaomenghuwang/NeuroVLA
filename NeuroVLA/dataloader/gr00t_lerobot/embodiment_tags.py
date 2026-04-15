@@ -52,6 +52,11 @@ class EmbodimentTag(Enum):
     The Franka Emika Panda robot.
     """
 
+    TELEAVATAR = 'teleavatar'
+    """
+    The TeleAvatar dual-arm teleoperation robot.
+    """
+
 # Embodiment tag string: to projector index in the Action Expert Module
 EMBODIMENT_TAG_MAPPING = {
     EmbodimentTag.NEW_EMBODIMENT.value: 31,
@@ -61,6 +66,7 @@ EMBODIMENT_TAG_MAPPING = {
     EmbodimentTag.AGIBOT_GENIE1.value: 26,
     EmbodimentTag.GR1.value: 24,
     EmbodimentTag.FRANKA.value: 25,
+    EmbodimentTag.TELEAVATAR.value: 30,
 }
 
 # Robot type to embodiment tag mapping
@@ -71,4 +77,5 @@ ROBOT_TYPE_TO_EMBODIMENT_TAG = {
     "oxe_rt1": EmbodimentTag.OXE_RT1,
     "demo_sim_franka_delta_joints": EmbodimentTag.FRANKA,
     "custom_robot_config": EmbodimentTag.NEW_EMBODIMENT,
+    "teleavatar": EmbodimentTag.TELEAVATAR,
 }

@@ -1,11 +1,19 @@
+import json
 from pathlib import Path
 from typing import Sequence
 from omegaconf import OmegaConf
 
 from NeuroVLA.dataloader.gr00t_lerobot.datasets import LeRobotSingleDataset, LeRobotMixtureDataset
+from NeuroVLA.dataloader.gr00t_lerobot.teleavatar_dataset import TeleAvatarDataset
 from NeuroVLA.dataloader.gr00t_lerobot.mixtures import DATASET_NAMED_MIXTURES
 from NeuroVLA.dataloader.gr00t_lerobot.data_config import ROBOT_TYPE_CONFIG_MAP
 from NeuroVLA.dataloader.gr00t_lerobot.embodiment_tags import ROBOT_TYPE_TO_EMBODIMENT_TAG, EmbodimentTag
+
+# Map robot types that require a specialised Dataset subclass.
+# Key: robot_type string; Value: Dataset class to instantiate.
+_ROBOT_TYPE_DATASET_CLASS = {
+    "teleavatar": TeleAvatarDataset,
+}
 
 def collate_fn(batch):
     return batch
@@ -29,13 +37,28 @@ def make_LeRobotSingleDataset(
     data_config = ROBOT_TYPE_CONFIG_MAP[robot_type]
     modality_config = data_config.modality_config()
     transforms = data_config.transform()
-    dataset_path = data_root_dir / data_name
+    dataset_path = Path(data_root_dir) / data_name
+
+    # If the data_config provides a programmatic modality metadata definition,
+    # write (or overwrite) meta/modality.json from code so no hand-crafted JSON is needed.
+    if callable(getattr(data_config, "get_lerobot_modality_meta", None)):
+        modality_json_path = dataset_path / "meta" / "modality.json"
+        meta_dict = data_config.get_lerobot_modality_meta()
+        modality_json_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(modality_json_path, "w") as f:
+            json.dump(meta_dict, f, indent=4)
+        print(f"[TeleAvatar] Written modality metadata to {modality_json_path}")
+
     if robot_type not in ROBOT_TYPE_TO_EMBODIMENT_TAG:
         print(f"Warning: Robot type {robot_type} not found in ROBOT_TYPE_TO_EMBODIMENT_TAG, using {EmbodimentTag.NEW_EMBODIMENT} as default")
         embodiment_tag = EmbodimentTag.NEW_EMBODIMENT
     else:
         embodiment_tag = ROBOT_TYPE_TO_EMBODIMENT_TAG[robot_type]
-    return LeRobotSingleDataset(
+
+    # Use a robot-specific Dataset subclass when one is registered
+    dataset_cls = _ROBOT_TYPE_DATASET_CLASS.get(robot_type, LeRobotSingleDataset)
+
+    return dataset_cls(
         dataset_path=dataset_path,
         modality_configs=modality_config,
         transforms=transforms,

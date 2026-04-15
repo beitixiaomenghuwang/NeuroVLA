@@ -58,5 +58,9 @@ DATASET_NAMED_MIXTURES = {
         ("custom_dataset_name_2", 1.0, "custom_robot_config"),
     ],
 
+    # TeleAvatar dual-arm real-robot dataset
+    "teleavatar_pick_marker": [
+        ("pick_marker_put_into_cup_20251113", 1.0, "teleavatar"),
+    ],
 
 }

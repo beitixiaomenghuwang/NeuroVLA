@@ -742,17 +742,18 @@ class LeRobotSingleDataset(Dataset):
         data = self.get_step_data(trajectory_id, base_index)
         # Process all video keys dynamically
         
-        image_0 = data[self.modality_keys["video"][0]][0]
-        image_0 = Image.fromarray(image_0).resize((224, 224))
+        # Collect all camera views (multi-camera supported by QwenVL and DINO)
+        images = []
+        for video_key in self.modality_keys["video"]:
+            img_array = data[video_key][0]  # [H, W, C] at the current timestep
+            images.append(Image.fromarray(img_array).resize((224, 224)))
+
         language = data[self.modality_keys["language"][0]][0]
         action = []
         for action_key in self.modality_keys["action"]:
             action.append(data[action_key])
         action = np.concatenate(action, axis=1)
-        # print(action.shape)
-        # @TODO 这里和 mixture 也有互拆性
-        return dict(action=action, image=[image_0], language=[language])
-        #return dict(action=action, image=images, language=[language])
+        return dict(action=action, image=images, lang=language)
 
     def get_step_data(self, trajectory_id: int, base_index: int) -> dict:
         """Get the RAW data for a single step in a trajectory. No transforms are applied.
