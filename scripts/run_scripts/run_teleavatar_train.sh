@@ -13,8 +13,8 @@ RUN_ROOT_DIR=./results/Checkpoints
 RUN_ID=teleavatar_pick_marker_$(date +%m%d_%H%M)
 
 # GPU configuration (adjust CUDA_VISIBLE_DEVICES and --num_processes to your setup)
-export CUDA_VISIBLE_DEVICES=0
-NUM_GPUS=1
+export CUDA_VISIBLE_DEVICES=6,7
+NUM_GPUS=2
 
 # W&B settings (optional – set WANDB_MODE=disabled to skip)
 # export WANDB_MODE=disabled
