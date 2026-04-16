@@ -4,10 +4,10 @@
 
 # ── User settings ──────────────────────────────────────────────────────────────
 # Local path to Qwen3-VL-4B-Instruct weights
-MODEL_PATH=Qwen/Qwen3-VL-4B-Instruct
+MODEL_PATH=/home/caslx/Model/Qwen3-VL-4B-Instruct
 
-# Parent directory that contains pick_marker_put_into_cup_20251113/
-DATA_ROOT_DIR=.
+# Absolute path to the dataset directory (pick_marker_put_into_cup_20251113)
+DATA_ROOT_DIR=/home/caslx/Robotics/NeuroVLA/pick_marker_put_into_cup_20251113
 
 RUN_ROOT_DIR=./results/Checkpoints
 RUN_ID=teleavatar_pick_marker_$(date +%m%d_%H%M)
@@ -35,7 +35,7 @@ cp "$0" "${OUTPUT_DIR}/"   # archive this script with the run
 echo "============================================"
 echo "  Run ID: ${RUN_ID}"
 echo "  Model:  ${MODEL_PATH}"
-echo "  Data:   ${DATA_ROOT_DIR}/pick_marker_put_into_cup_20251113"
+echo "  Data:   ${DATA_ROOT_DIR}"
 echo "  GPUs:   ${CUDA_VISIBLE_DEVICES} (${NUM_GPUS} processes)"
 echo "============================================"
 
@@ -49,7 +49,7 @@ accelerate launch \
   NeuroVLA/training/train_NeuroVLA.py \
   --config_yaml NeuroVLA/config/training/neurovla_teleavatar.yaml \
   --framework.qwenvl.base_vlm "${MODEL_PATH}" \
-  --datasets.vla_data.data_root_dir "${DATA_ROOT_DIR}" \
+  --datasets.vla_data.data_root_dir "$(dirname "${DATA_ROOT_DIR}")" \
   --datasets.vla_data.per_device_batch_size ${PER_DEVICE_BS} \
   --trainer.max_train_steps ${MAX_TRAIN_STEPS} \
   --trainer.save_interval ${SAVE_INTERVAL} \
