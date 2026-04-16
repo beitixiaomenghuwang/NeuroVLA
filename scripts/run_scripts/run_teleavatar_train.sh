@@ -4,27 +4,27 @@
 
 # ── User settings ──────────────────────────────────────────────────────────────
 # Local path to Qwen3-VL-4B-Instruct weights
-MODEL_PATH=/home/caslx/Model/Qwen3-VL-4B-Instruct
+MODEL_PATH=/DATA/disk0/xueyang/model/Qwen3-VL-4B-Instruct
 
-# Absolute path to the dataset directory (pick_marker_put_into_cup_20251113)
-DATA_ROOT_DIR=/home/caslx/Robotics/NeuroVLA/pick_marker_put_into_cup_20251113
+# Parent directory that contains pick_marker_put_into_cup_20251113/
+DATA_ROOT_DIR=/DATA/disk0/xueyang/Data/pick_marker_put_into_cup_20251113_with_progress
 
-RUN_ROOT_DIR=./results/Checkpoints
+RUN_ROOT_DIR=/DATA/disk0/xueyang/model/neurovla_teleavatar
 RUN_ID=teleavatar_pick_marker_$(date +%m%d_%H%M)
 
 # GPU configuration (adjust CUDA_VISIBLE_DEVICES and --num_processes to your setup)
-export CUDA_VISIBLE_DEVICES=6,7
+export CUDA_VISIBLE_DEVICES=0,1
 NUM_GPUS=2
 
 # W&B settings (optional – set WANDB_MODE=disabled to skip)
 # export WANDB_MODE=disabled
 WANDB_PROJECT=neurovla_teleavatar
-WANDB_ENTITY=your_wandb_entity   # ← replace or set via env var
+WANDB_ENTITY=gxy1000h-jilin-university   # ← replace or set via env var
 
 # ── Advanced overrides (can also be edited in the YAML) ────────────────────────
 PER_DEVICE_BS=8
-MAX_TRAIN_STEPS=30000
-SAVE_INTERVAL=5000
+MAX_TRAIN_STEPS=120000
+SAVE_INTERVAL=20000
 GRADIENT_ACC=1
 
 # ── Setup ──────────────────────────────────────────────────────────────────────

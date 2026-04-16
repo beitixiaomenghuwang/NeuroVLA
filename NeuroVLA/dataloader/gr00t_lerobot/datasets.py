@@ -1477,7 +1477,7 @@ class LeRobotMixtureDataset(Dataset):
         self.epoch = epoch
         # self.sampled_steps = self.sample_epoch()
 
-    def sample_step(self, index: int) -> tuple[LeRobotSingleDataset, int, int]:
+    def sample_step(self, index: int) -> tuple[LeRobotSingleDataset, int]:
         """Sample a single step from the dataset."""
         # return self.sampled_steps[index]
 
@@ -1490,8 +1490,7 @@ class LeRobotMixtureDataset(Dataset):
         dataset = self.datasets[dataset_index]
 
         single_step_index = rng.choice(len(dataset.all_steps)) # TODO 不要random try? 而是打乱一下？
-        trajectory_id, base_index = dataset.all_steps[single_step_index]
-        return dataset, trajectory_id, base_index # TODO 要check base_index 是否对上了
+        return dataset, single_step_index
 
     def __getitem__(self, index: int) -> dict:
         """Get the data for a single trajectory and start index.
@@ -1507,25 +1506,28 @@ class LeRobotMixtureDataset(Dataset):
         
         for attempt in range(max_retries):
             try:
-                dataset, trajectory_name, step = self.sample_step(index)
+                dataset, step_idx = self.sample_step(index)
                 #todo gwy:这里拿历史信息
-                data = dataset.transforms(dataset.get_step_data(trajectory_name, step))
+                data = dataset[step_idx]
+
+                # If the underlying dataset (e.g. TeleAvatarDataset) already processed the sample,
+                # just pass through with dtype conversion for consistency.
+                if "image" in data:
+                    result = {
+                        "action": data["action"].astype(np.float16),
+                        "image": data["image"],
+                        "lang": data["lang"],
+                    }
+                    if "state" in data:
+                        result["state"] = data["state"].astype(np.float16)
+                    return result
+
+                # Legacy raw-data path for datasets that return unprocessed step data
                 images = []
-                # print("gwydebug4")
-                # print(dataset.modality_keys)
-                # print("Available keys in data:", list(data.keys()))
                 for video_key in dataset.modality_keys["video"]:
                     image = data[video_key][0]
-                    
-                    # Apply image cropping if enabled and the video key is base_view
-                    # Note: crop_obs_camera functionality has been removed
-                    
                     image = Image.fromarray(image).resize((224, 224))
                     images.append(image)
-                #image_0 = data[dataset.modality_keys["video"][0]][0]
-                #image_0 = Image.fromarray(image_0).resize((224, 224)) # 变成config 控制
-                # image_1 = data[dataset.modality_keys["video"][1]][0]
-                # image_1 = Image.fromarray(image_1).resize((224, 224)) # TODO 后面参数话掉
                 language = data[dataset.modality_keys["language"][0]][0]
                 action = []
                 state=[]
@@ -1535,8 +1537,6 @@ class LeRobotMixtureDataset(Dataset):
                 for action_key in dataset.modality_keys["action"]:
                     action.append(data[action_key])
                 action = np.concatenate(action, axis=1).astype(np.float16)
-                # image = [image_0, image_1] # TODO 实现参数控制 --> 和 config 对齐
-                #input_obs = [image_0]
                 input_obs = images
                 return dict(action=action, image=input_obs, lang=language, state=state)
                 
