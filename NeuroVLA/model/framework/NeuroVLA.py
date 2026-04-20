@@ -45,11 +45,23 @@ class NeuroVLA(baseframework):
         # Q-Former for extracting action-relevant features from VLM hidden states
         self.layer_qformer = get_layerwise_qformer(config=self.config)
 
-        # Action prediction model (input_dim=768, hidden_dim=1536, action_dim=7)
-        self.action_model = get_action_model(input_dim=768, hidden_dim=768*2, action_dim=7)
+        # Read dimensions from config (with single-arm defaults for backward-compatibility)
+        _am_cfg = config.framework.action_model if (config and hasattr(config.framework, "action_model")) else None
+        _qf_cfg = config.framework.layer_qformer if (config and hasattr(config.framework, "layer_qformer")) else None
+        qformer_out_dim = getattr(_qf_cfg, "ouptput_dim", 768) if _qf_cfg else 768
+        action_dim     = getattr(_am_cfg, "action_dim", 7)     if _am_cfg else 7
+        state_dim      = getattr(_am_cfg, "state_dim", 8)      if _am_cfg else 8
+        hidden_dim     = getattr(_am_cfg, "hidden_dim", 768*2) if _am_cfg else 768*2
 
-        # Edit model for refining actions based on robot states
-        self.edit_model = get_gruedit_model(input_dim=768, hidden_dim=256, robot_state_dim=8)
+        # SNN action prediction model
+        self.action_model = get_action_model(
+            input_dim=qformer_out_dim, hidden_dim=hidden_dim, action_dim=action_dim
+        )
+
+        # GRU-gated FiLM edit model for robot-state conditioning
+        self.edit_model = get_gruedit_model(
+            input_dim=qformer_out_dim, hidden_dim=256, robot_state_dim=state_dim
+        )
 
         self.L1_loss = nn.L1Loss()
         self.norm_stats = norm_stats
@@ -70,15 +82,13 @@ class NeuroVLA(baseframework):
             examples: List of training examples, each containing:
                 - "image": Input images
                 - "lang": Language instructions
-                - "action": Ground truth actions [B, T, 7]
-                - "state": Robot states [B, T, 8]
+                - "action": Ground truth actions [B, T, action_dim]
+                - "state": Robot states [B, history_len, state_dim]
                 - "solution" (optional): Chain-of-thought solutions
 
         Returns:
             Dictionary containing action_loss
         """
-        inference_num = 0
-
         # Extract data from examples
         images = [example["image"] for example in examples]
         instructions = [example["lang"] for example in examples]
@@ -105,41 +115,31 @@ class NeuroVLA(baseframework):
             )
 
         vlm_cot_loss = qwenvl_outputs.loss
-
         if vlm_cot_loss is None or torch.isnan(vlm_cot_loss):
             vlm_cot_loss = torch.tensor(0.0, device=self.qwen_vl_interface.model.device)
 
-        # Action prediction with iterative refinement
+        # Single-pass action prediction via SNN
+        # The SNN processes QFormer tokens as a temporal sequence; num_query_tokens
+        # must equal the action prediction horizon so that shapes align.
         with torch.autocast("cuda", dtype=torch.float32):
-            # Extract action-relevant features from VLM hidden states
             start_layer = self.config.framework.layer_qformer.qformer_start_layer if self.config else -6
-            end_layer = self.config.framework.layer_qformer.qformer_end_layer if self.config else -1
+            end_layer   = self.config.framework.layer_qformer.qformer_end_layer   if self.config else -1
+            # action_latent_feature: [B, num_query_tokens, qformer_out_dim]
             action_latent_feature = self.layer_qformer(qwenvl_outputs.hidden_states[start_layer:end_layer])
 
-            states = torch.tensor(np.array(states), dtype=torch.float32, device=action_latent_feature.device)
-            all_predicted_actions = []
-            inference_num = 0
+            states_tensor = torch.tensor(np.array(states), dtype=torch.float32,
+                                         device=action_latent_feature.device)
 
-            # Iterative action prediction (can be configured from 2 to 10 iterations)
-            while inference_num < 2:
-                # Edit action features based on current robot states
-                edit_action_feature = self.edit_model(action_latent_feature, states)
+            # GRU-gated FiLM conditioning on robot state history
+            edit_action_feature = self.edit_model(action_latent_feature, states_tensor)
 
-                # Predict action chunk
-                predicted_actions = self.action_model.predict_action(edit_action_feature)
-                all_predicted_actions.append(predicted_actions)
+            # SNN temporal prediction: [B, num_query_tokens, action_dim]
+            predicted_actions = self.action_model.predict_action(edit_action_feature)
 
-                # Update states for next iteration
-                predicted_states = torch.zeros_like(states)
-                predicted_states[:, :predicted_actions.shape[1], :7] = predicted_actions
-                predicted_states[:, :, 7] = states[:, :, 7]  # Keep gripper state
-                states = predicted_states.clone()
-                inference_num += 1
-
-            # Compute action loss
-            action_tensor = torch.tensor(np.array(actions), dtype=torch.float32, device=predicted_actions.device)
-            predicted_action_tensor = torch.cat(all_predicted_actions, dim=1)
-            action_loss = self.L1_loss(predicted_action_tensor, action_tensor)
+            # Ground truth: [B, T_action, action_dim]  (T_action == num_query_tokens)
+            action_tensor = torch.tensor(np.array(actions), dtype=torch.float32,
+                                         device=predicted_actions.device)
+            action_loss = self.L1_loss(predicted_actions, action_tensor)
 
         return {"action_loss": action_loss}
 
@@ -172,18 +172,13 @@ class NeuroVLA(baseframework):
         Returns:
             Dictionary containing "normalized_actions" [B, T, 7]
         """
-        predict_num = 0
-
         # Resize images to model input size
         batch_images = resize_images(batch_images, target_size=(224, 224))
 
         # Build VLM inputs
-        inferface_inputs = self.qwen_vl_interface.build_qwenvl_inputs(
+        qwen_inputs = self.qwen_vl_interface.build_qwenvl_inputs(
             images=batch_images, instructions=instructions
         )
-        qwen_inputs = inferface_inputs
-
-        all_predicted_actions = []
 
         # Generate cognition features through VLM
         with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -197,43 +192,22 @@ class NeuroVLA(baseframework):
                 return_dict=True,
             )
 
-        # Action prediction with iterative refinement
+        # Single-pass action prediction via SNN
         with torch.autocast("cuda", dtype=torch.float32):
-            # Extract action features from VLM hidden states
             start_layer = self.config.framework.layer_qformer.qformer_start_layer if self.config else -6
-            end_layer = self.config.framework.layer_qformer.qformer_end_layer if self.config else -1
-
+            end_layer   = self.config.framework.layer_qformer.qformer_end_layer   if self.config else -1
             action_latent_feature = self.layer_qformer(qwenvl_outputs.hidden_states[start_layer:end_layer])
 
-            using_cfg = cfg_scale > 1.0
-            B = action_latent_feature.shape[0]
-
-            # Convert states to tensor
-            states = torch.tensor(
+            states_tensor = torch.tensor(
                 np.array(states, dtype=np.float32),
                 dtype=torch.float32,
                 device=action_latent_feature.device
             )
 
-            # Iterative action prediction (default: 2 iterations)
-            while predict_num < 2:
-                # Edit action features based on current states
-                edit_action_feature = self.edit_model(action_latent_feature, states)
+            edit_action_feature = self.edit_model(action_latent_feature, states_tensor)
+            samples = self.action_model.predict_action(edit_action_feature)
 
-                # Predict action chunk
-                samples = self.action_model.predict_action(edit_action_feature)
-                all_predicted_actions.append(samples)
-
-                # Update states for next iteration
-                predicted_states = torch.zeros_like(states)
-                predicted_states[:, :samples.shape[1], :7] = samples
-                predicted_states[:, :, 7] = states[:, :, 7]  # Keep gripper state
-                states = predicted_states.clone()
-                predict_num += 1
-
-        # Concatenate all predicted action chunks
-        predicted_action_tensor = torch.cat(all_predicted_actions, dim=1)
-        normalized_actions = predicted_action_tensor.detach().cpu().numpy()
+        normalized_actions = samples.detach().cpu().numpy()
         return {"normalized_actions": normalized_actions}
 
 
