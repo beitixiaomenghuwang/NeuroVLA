@@ -772,8 +772,8 @@ class TeleAvatarDataConfig(BaseDataConfig):
     language_keys = ["annotation.human.action.task_description"]
 
     observation_indices = [0]
-    action_indices = list(range(16))    # predict 16 future steps
-    state_indices = list(range(-16, 0)) # 16 past state steps
+    action_indices = list(range(30))    # predict 16 future steps
+    state_indices = list(range(-30, 0)) # 16 past state steps
 
     @staticmethod
     def get_lerobot_modality_meta() -> dict:

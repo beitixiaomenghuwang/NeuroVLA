@@ -33,7 +33,7 @@ framework:
     # IMPORTANT: num_query_tokens must equal the action prediction horizon (16).
     # The SNN maps each QFormer token → one action timestep.
     # If you change future_action_window_size below, update this to match.
-    num_query_tokens: 64
+    num_query_tokens: 30
     input_dim: 2560                     # must match vl_hidden_dim
     ouptput_dim: 768                    # QFormer output dim fed into SNN
     grad_scale: 0.5
@@ -56,8 +56,6 @@ datasets:
     image_size: [224, 224]
     per_device_batch_size: 8
     load_all_data_for_training: true
-    # Action horizon must match layer_qformer.num_query_tokens above
-    future_action_window_size: 15       # predict 16 steps (15 + current)
     past_action_window_size: 0
 
 
@@ -71,7 +69,7 @@ trainer:
 
   learning_rate:
     base: 1.0e-05
-    qwen_vl_interface: 0.0             # VLM backbone frozen
+    qwen_vl_interface: 1.0e-05             # VLM backbone frozen
     layer_qformer: 5.0e-05
     action_model: 1.0e-04              # SNN (MLPResNet)
     edit_model: 1.0e-04                # GRU-gated FiLM modulator
@@ -82,8 +80,7 @@ trainer:
   scheduler_specific_kwargs:
     min_lr: 1.0e-06
 
-  # Freeze VLM backbone; train QFormer + SNN action head + GRU edit model
-  freeze_modules: 'qwen_vl_interface'
+  freeze_modules: ''  # no frozen modules; all are trainable
 
   loss_scale:
     vla: 1.0
