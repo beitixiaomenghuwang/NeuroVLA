@@ -553,7 +553,7 @@ def build_argparser() -> argparse.ArgumentParser:
         type=str, help="Natural language task instruction.",
     )
     p.add_argument(
-        "--chunk_size", default=64, type=int,
+        "--chunk_size", default=16, type=int,
         help="Steps to execute per chunk before re-querying the server (max 16). "
              "Matches the training action_horizon=16; reduce to re-query more frequently.",
     )

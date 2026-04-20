@@ -45,22 +45,31 @@ class DINOv2BackBone(nn.Module):
 
     def __init__(self, backone_name="dinov2_vits14", output_channels=1024) -> None:
         super().__init__()
-        try:
-            self.body = torch.hub.load("facebookresearch/dinov2", backone_name)
-        except:
-            import traceback
+        TORCH_HOME = os.environ.get("TORCH_HOME", "~/.cache/torch/")
+        weights_path = os.path.expanduser(f"{TORCH_HOME}/hub/checkpoints/{backone_name}_pretrain.pth")
+        code_path = os.path.expanduser(f"{TORCH_HOME}/hub/facebookresearch_dinov2_main")
 
-            traceback.print_exc()
-            print(f"Failed to load dinov2 from torch hub, loading from local")
-            TORCH_HOME = os.environ.get("TORCH_HOME", "~/.cache/torch/")
-            weights_path = os.path.expanduser(f"{TORCH_HOME}/hub/checkpoints/{backone_name}_pretrain.pth")
-
-            code_path = os.path.expanduser(f"{TORCH_HOME}/hub/facebookresearch_dinov2_main")
-
-            self.body = torch.hub.load(code_path, backone_name, source="local", pretrained=False)
-
-            state_dict = torch.load(weights_path)
+        # If local cache exists, use it directly without touching the network
+        if os.path.isfile(weights_path) and os.path.isdir(code_path):
+            print(f"Loading dinov2 from local cache: {weights_path}")
+            self.body = torch.hub.load(
+                code_path, backone_name, source="local", pretrained=False, trust_repo=True
+            )
+            state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
             self.body.load_state_dict(state_dict)
+        else:
+            try:
+                self.body = torch.hub.load(
+                    "facebookresearch/dinov2", backone_name, trust_repo=True
+                )
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                raise RuntimeError(
+                    f"Failed to load {backone_name} from torch hub and local cache not found "
+                    f"(looked in {weights_path} and {code_path}). "
+                    f"Please set TORCH_HOME env var to your pre-downloaded dinov2 cache."
+                ) from e
         if backone_name == "dinov2_vits14":
             self.num_channels = 384
         elif backone_name == "dinov2_vitb14":
