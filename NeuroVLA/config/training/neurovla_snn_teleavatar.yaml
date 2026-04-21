@@ -102,7 +102,6 @@ trainer:
     weight_decay: 1.0e-08
 
   is_resume: false
-  resume_epoch: null
-  resume_step: null
+  resume_from_checkpoint: null   # ← set to checkpoint dir path, e.g. /path/to/run/checkpoints/steps_20000
   enable_gradient_checkpointing: true
   enable_mixed_precision_training: true

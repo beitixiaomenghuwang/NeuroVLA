@@ -143,6 +143,7 @@ class VLATrainer(TrainerUtils):
         # training status tracking
         self.completed_steps = 0
         self.total_batch_size = self._calculate_total_batch_size()
+        self.resume_checkpoint_path = None
 
     def prepare_training(self):
         rank = dist.get_rank() if dist.is_initialized() else 0
@@ -197,43 +198,68 @@ class VLATrainer(TrainerUtils):
                 project=self.config.wandb_project,
                 entity=self.config.wandb_entity,
                 group="vla-train",
+                resume="must" if self.resume_checkpoint_path else None,
             )
 
     def _init_checkpointing(self):
-        """initialize checkpoint directory"""
+        """initialize checkpoint directory and resume from checkpoint if requested"""
         self.checkpoint_dir = os.path.join(self.config.output_dir, "checkpoints")
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
-        pretrained_checkpoint = getattr(self.config.trainer, "pretrained_checkpoint", None)
+        # determine checkpoint to resume from
+        resume_from_checkpoint = getattr(self.config.trainer, "resume_from_checkpoint", None)
         is_resume = getattr(self.config.trainer, "is_resume", False)
 
-        # resume training state
-        if pretrained_checkpoint and is_resume:
-            self._load_checkpoint(self.config.resume_from_checkpoint)
+        if is_resume and resume_from_checkpoint:
+            if not os.path.isdir(resume_from_checkpoint):
+                raise FileNotFoundError(f"Resume checkpoint directory not found: {resume_from_checkpoint}")
+            self.resume_checkpoint_path = resume_from_checkpoint
+            self._load_checkpoint(self.resume_checkpoint_path)
 
     def _load_checkpoint(self, checkpoint_path):
-        """load checkpoint"""
+        """load training state (model, optimizer, scheduler, rng, step) from checkpoint"""
         self.accelerator.load_state(checkpoint_path)
-        self.accelerator.print(f"Resumed from checkpoint: {checkpoint_path}")
+        # try to restore completed_steps from the saved metadata
+        metadata_path = os.path.join(checkpoint_path, "training_metadata.json")
+        if os.path.exists(metadata_path):
+            with open(metadata_path, "r") as f:
+                metadata = json.load(f)
+            self.completed_steps = metadata.get("completed_steps", 0)
+        else:
+            # fallback: infer from directory name if it follows steps_XXX pattern
+            dir_name = os.path.basename(checkpoint_path)
+            if dir_name.startswith("steps_"):
+                try:
+                    self.completed_steps = int(dir_name.split("_")[1])
+                except ValueError:
+                    self.completed_steps = 0
+        self.accelerator.print(f"🔄 Resumed from checkpoint: {checkpoint_path} (starting at step {self.completed_steps})")
 
     def _save_checkpoint(self):
-        """save current training state"""
+        """save current training state (model + optimizer + scheduler + rng + step)"""
+        checkpoint_path = os.path.join(self.checkpoint_dir, f"steps_{self.completed_steps}")
 
-        if accelerator.is_main_process:
+        # accelerator.save_state handles model, optimizer, scheduler and random states across all processes
+        self.accelerator.save_state(checkpoint_path)
 
-            checkpoint_path = os.path.join(self.checkpoint_dir, f"steps_{self.completed_steps}")
-            # save model state
+        # also save the model weights separately for easy inference later
+        if self.accelerator.is_main_process:
             state_dict = self.accelerator.get_state_dict(self.model)
             torch.save(state_dict, checkpoint_path + "_pytorch_model.pt")
 
-            # save training metadata
-            summary_data = {
-                "steps": self.completed_steps,
-            }
+            # save training metadata for resume
+            metadata = {"completed_steps": self.completed_steps}
+            with open(os.path.join(checkpoint_path, "training_metadata.json"), "w") as f:
+                json.dump(metadata, f)
+
+            # append to summary log
+            summary_data = {"steps": self.completed_steps}
             with open(os.path.join(self.config.output_dir, "summary.jsonl"), "a") as f:
                 f.write(json.dumps(summary_data) + "\n")
+
             self.accelerator.print(f"✅ Checkpoint saved at {checkpoint_path}")
-        accelerator.wait_for_everyone()
+
+        self.accelerator.wait_for_everyone()
 
     def _log_metrics(self, metrics):
         """record training metrics"""
@@ -279,7 +305,9 @@ class VLATrainer(TrainerUtils):
 
         # create progress bar
         progress_bar = tqdm(
-            range(self.config.trainer.max_train_steps), disable=not self.accelerator.is_local_main_process
+            initial=self.completed_steps,
+            total=self.config.trainer.max_train_steps,
+            disable=not self.accelerator.is_local_main_process,
         )
 
         # main training loop

@@ -47,7 +47,7 @@ accelerate launch \
   --main_process_port 29501 \
   --mixed_precision bf16 \
   NeuroVLA/training/train_NeuroVLA.py \
-  --config_yaml NeuroVLA/config/training/neurovla_teleavatar.yaml \
+  --config_yaml NeuroVLA/config/training/neurovla_snn_teleavatar.yaml \
   --framework.qwenvl.base_vlm "${MODEL_PATH}" \
   --datasets.vla_data.data_root_dir "$(dirname "${DATA_ROOT_DIR}")" \
   --datasets.vla_data.per_device_batch_size ${PER_DEVICE_BS} \
